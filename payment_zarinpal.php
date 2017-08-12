@@ -13,13 +13,13 @@ defined('_JEXEC') or die('Restricted access');
 
 require_once (JPATH_ADMINISTRATOR.'/components/com_j2store/library/plugins/payment.php');
 if (!class_exists ('checkHack')) {
-	require_once( JPATH_PLUGINS . '/j2store/payment_trangellzarinpal/trangell_inputcheck.php');
+	require_once( JPATH_PLUGINS . '/j2store/payment_zarinpal/trangell_inputcheck.php');
 }
 
-class plgJ2StorePayment_trangellzarinpal extends J2StorePaymentPlugin
+class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 {
 
-    var $_element    = 'payment_trangellzarinpal';
+    var $_element    = 'payment_zarinpal';
 
 	function __construct(& $subject, $config)
 	{
@@ -68,7 +68,7 @@ class plgJ2StorePayment_trangellzarinpal extends J2StorePaymentPlugin
         $vars->orderpayment_type = $this->_element;
         $vars->button_text = $this->params->get('button_text', 'J2STORE_PLACE_ORDER');
         //============================================================================
-		$vars->display_name = 'TrangellZarinpal';
+		$vars->display_name = 'Zarinpal';
 		$vars->merchant_id = $this->params->get('merchant_id', '');
 		if ($vars->merchant_id == null || $vars->merchant_id == ''){
 			$link = JRoute::_(JURI::root(). "index.php?option=com_j2store" );
@@ -97,7 +97,7 @@ class plgJ2StorePayment_trangellzarinpal extends J2StorePaymentPlugin
 				
 				$resultStatus = abs($result->Status); 
 				if ($resultStatus == 100) {
-					$vars->trangellzarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result->Authority;
+					$vars->zarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result->Authority;
 					$html = $this->_getLayout('prepayment', $vars);
 					return $html;
 				// Header('Location: https://sandbox.zarinpal.com/pg/StartPay/'.$result->Authority); 
@@ -134,8 +134,8 @@ class plgJ2StorePayment_trangellzarinpal extends J2StorePaymentPlugin
 				if (checkHack::checkString($status)){
 					if ($status == 'OK') {
 						try {
-							// $client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); 
-							$client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); // for local
+							$client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); 
+							// $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); // for local
 							$result = $client->PaymentVerification(
 								[
 									'MerchantID' =>  $this->params->get('merchant_id', ''),
@@ -214,7 +214,7 @@ class plgJ2StorePayment_trangellzarinpal extends J2StorePaymentPlugin
 
 	function saveStatus($msg,$statCode,$customer_note,$emptyCart,$trackingCode,$orderpayment){
 		$html ='<br />';
-		$html .='<strong>'.'TrangellZarinpal'.'</strong>';
+		$html .='<strong>'.'Zarinpal'.'</strong>';
 		$html .='<br />';
 		if (isset($trackingCode)){
 			$html .= '<br />';
