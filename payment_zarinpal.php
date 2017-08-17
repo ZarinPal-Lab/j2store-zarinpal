@@ -8,7 +8,6 @@
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
-/** ensure this file is being included by a parent file */
 defined('_JEXEC') or die('Restricted access');
 
 require_once (JPATH_ADMINISTRATOR.'/components/com_j2store/library/plugins/payment.php');
@@ -18,7 +17,6 @@ if (!class_exists ('checkHack')) {
 
 class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 {
-
     var $_element    = 'payment_zarinpal';
 
 	function __construct(& $subject, $config)
@@ -97,7 +95,7 @@ class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 				
 				$resultStatus = abs($result->Status); 
 				if ($resultStatus == 100) {
-					if (intval($this->params->get('zaringate', '')) == 0){
+					if ($this->params->get('zaringate', '') == 0){
 						$vars->zarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result->Authority;
 					}
 					else {
@@ -139,14 +137,8 @@ class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 				if (checkHack::checkString($status)){
 					if ($status == 'OK') {
 						try {
-							if (intval($this->params->get('zaringate', '')) == 0){
-								$client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); 
-							}
-							else {
-								$client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl/ZarinGate‬‬', ['encoding' => 'UTF-8']); 
-							}
-							
-							// $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); // for local
+							//$client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);   // for local
+							 $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
 							$result = $client->PaymentVerification(
 								[
 									'MerchantID' =>  $this->params->get('merchant_id', ''),
