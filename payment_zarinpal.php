@@ -80,9 +80,32 @@ class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 			$CallbackURL = JRoute::_(JURI::root(). "index.php?option=com_j2store&view=checkout" ) .'&orderpayment_id='.$vars->orderpayment_id . '&orderpayment_type=' . $vars->orderpayment_type .'&task=confirmPayment' ;
 				
 			try {
-				$client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); 	
+				//$client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
 				// $client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']); // for local
-				$result = $client->PaymentRequest(
+                ///////////////////////////////////////////////////////////////////////////////////////////////////
+                $data = array("merchant_id" => $vars->merchant_id,
+                    "amount" => $Amount,
+                    "callback_url" => $CallbackURL,
+                    "description" => $Description,
+                    "metadata" => [ "email" => "0","mobile"=>"0"],
+                );
+                $jsonData = json_encode($data);
+                $ch = curl_init('https://api.zarinpal.com/pg/v4/payment/request.json');
+                curl_setopt($ch, CURLOPT_USERAGENT, 'ZarinPal Rest Api v1');
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                    'Content-Type: application/json',
+                    'Content-Length: ' . strlen($jsonData)
+                ));
+
+                $result = curl_exec($ch);
+                $err = curl_error($ch);
+                $result = json_decode($result, true, JSON_PRETTY_PRINT);
+                curl_close($ch);
+                /// /////////////////////////////////////////////////////////////////////////////////////////////////
+			/*	$result = $client->PaymentRequest(
 					[
 					'MerchantID' => $vars->merchant_id,
 					'Amount' => $Amount,
@@ -91,26 +114,39 @@ class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 					'Mobile' => $Mobile,
 					'CallbackURL' => $CallbackURL,
 					]
-				);
+				);*/
 				
-				$resultStatus = abs($result->Status); 
-				if ($resultStatus == 100) {
-					if ($this->params->get('zaringate', '') == 0){
-						$vars->zarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result->Authority;
-					}
-					else {
-						$vars->zarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result->Authority.'‫‪/ZarinGate‬‬';
-					}
-					$html = $this->_getLayout('prepayment', $vars);
-					return $html;
-				// Header('Location: https://sandbox.zarinpal.com/pg/StartPay/'.$result->Authority); 
-			
-				} else {
-					$link = JRoute::_( "index.php?option=com_j2store" );
-					$app->redirect($link, '<h2>ERR: '. $resultStatus .'</h2>', $msgType='Error'); 
-				}
+				//$resultStatus = abs($result->Status);
+
+                    if ($result['data']['code'] == 100) {
+                      //  if ($this->params->get('zaringate', '') == 0){
+                        //$vars->zarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result['data']["authority"];
+                       // }
+                       // else {
+                          //  $vars->zarinpal= 'https://www.zarinpal.com/pg/StartPay/'.$result['data']["authority"];
+                       // }
+                      //  $html = $this->_getLayout('prepayment', $vars);
+                      //  return $html;
+                        // Header('Location: https://sandbox.zarinpal.com/pg/StartPay/'.$result->Authority);
+                        echo'<html><body>
+<script type="text/javascript" src="https://cdn.zarinpal.com/zarinak/v1/checkout.js"></script>
+<script type="text/javascript">
+window.onload = function () {
+Zarinak.setAuthority("' . $result['data']['authority'] . '");
+Zarinak.showQR();
+Zarinak.open();
+};
+</script>
+</body></html>';
+
+                    } else {
+                        $link = JRoute::_( "index.php?option=com_j2store" );
+                        $app->redirect($link, '<h2>ERR: '. $result['errors']['code'] .'</h2>', $msgType='Error');
+                    }
+
+
 			}
-			catch(\SoapFault $e) {
+			catch(Exception $e) {
 				$msg= $this->getGateMsg('error'); 
 				$link = JRoute::_( "index.php?option=com_j2store" );
 				$app->redirect($link, '<h2>'.$msg.'</h2>', $msgType='Error'); 
@@ -128,7 +164,7 @@ class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 		$orderpayment = F0FTable::getInstance ( 'Order', 'J2StoreTable' )->getClone ();
 	    //$this->getShippingAddress()->phone_2; //mobile
 		//==========================================================================
-		$Authority = $jinput->get->get('Authority', '0', 'INT');
+		$Authority = $jinput->get->get('Authority', 'STRING');
 		$status = $jinput->get->get('Status', '', 'STRING');
 
 	    if ($orderpayment->load ($orderpayment_id)){
@@ -138,28 +174,44 @@ class plgJ2StorePayment_zarinpal extends J2StorePaymentPlugin
 					if ($status == 'OK') {
 						try {
 							//$client = new SoapClient('https://sandbox.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);   // for local
-							 $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
-							$result = $client->PaymentVerification(
+							// $client = new SoapClient('https://www.zarinpal.com/pg/services/WebGate/wsdl', ['encoding' => 'UTF-8']);
+                            /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                            $data = array("merchant_id" => $this->params->get('merchant_id', ''), "authority" => $Authority, "amount" => round($orderpayment->order_total,0)/10);
+                            $jsonData = json_encode($data);
+                            $ch = curl_init('https://api.zarinpal.com/pg/v4/payment/verify.json');
+                            curl_setopt($ch, CURLOPT_USERAGENT, 'ZarinPal Rest Api v4');
+                            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+                            curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonData);
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+                                'Content-Type: application/json',
+                                'Content-Length: ' . strlen($jsonData)
+                            ));
+                            $result = curl_exec($ch);
+                            curl_close($ch);
+                            $result = json_decode($result, true);
+                            /// /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+						/*	$result = $client->PaymentVerification(
 								[
 									'MerchantID' =>  $this->params->get('merchant_id', ''),
 									'Authority' => $Authority,
 									'Amount' => round($orderpayment->order_total,0)/10,
 								]
-							);
-							$resultStatus = abs($result->Status); 
-							if ($resultStatus == 100) {
-								$msg= $this->getGateMsg($resultStatus); 
-								$this->saveStatus($msg,1,$customer_note,'ok',$result->RefID,$orderpayment);	
-								$app->enqueueMessage($result->RefID . ' کد پیگیری شما', 'message');	
+							);*/
+							//$resultStatus = abs($result->Status);
+							if ($result['data']['code'] == 100) {
+								$msg= $this->getGateMsg($result['data']['code']);
+								$this->saveStatus($msg,1,$customer_note,'ok',$result['data']['ref_id'],$orderpayment);
+								$app->enqueueMessage($result['data']['ref_id'] . ' کد پیگیری شما', 'message');
 							} 
 							else {
-								$msg= $this->getGateMsg($resultStatus); 
+								$msg= $this->getGateMsg($result['errors']['code']);
 								$this->saveStatus($msg,3,$customer_note,'nonok',null,$orderpayment);// error
 								$link = JRoute::_( "index.php?option=com_j2store" );
 								$app->redirect($link, '<h2>'.$msg.'</h2>', $msgType='Error'); 
 							}
 						}
-						catch(\SoapFault $e) {
+						catch(Exception $e) {
 							$msg= $this->getGateMsg('error'); 
 							$this->saveStatus($msg,3,$customer_note,'nonok',null,$orderpayment);
 							$link = JRoute::_( "index.php?option=com_j2store" );
